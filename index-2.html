@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pi Marketplace Pro V3</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f5f3ff;color:#21183b}
+header{background:#5b21b6;color:white;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:5}
+.logo{font-size:21px;font-weight:800}.nav button{margin-left:7px;border:0;border-radius:9px;padding:9px 12px;cursor:pointer}
+main{max-width:1050px;margin:auto;padding:20px}.hero{background:linear-gradient(135deg,#6d28d9,#9333ea);color:#fff;border-radius:18px;padding:28px;margin-bottom:20px}
+.hero h1{margin:0 0 8px}.hero input{width:100%;padding:13px;border:0;border-radius:10px;font-size:15px}
+.card{background:#fff;border-radius:15px;padding:18px;margin-bottom:18px;box-shadow:0 4px 18px #00000012}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:15px}
+.product{border:1px solid #e8e0ff;border-radius:14px;padding:14px}.product .pic{height:170px;border-radius:10px;background:#ede9fe;display:flex;align-items:center;justify-content:center;font-size:45px;margin-bottom:10px;overflow:hidden;position:relative}.product .pic img{width:100%;height:100%;object-fit:cover;display:block}.product .fallback{display:none;align-items:center;justify-content:center;width:100%;height:100%}
+.cart-line{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:10px;border-bottom:1px solid #eee}.price{font-weight:800;color:#6d28d9;font-size:18px}.muted{color:#71677f;font-size:13px}
+button.primary{background:#6d28d9;color:white;border:0;border-radius:9px;padding:11px 14px;cursor:pointer}
+button.danger{background:#dc2626;color:white;border:0;border-radius:8px;padding:7px 10px}
+input,select,textarea{width:100%;padding:11px;border:1px solid #ddd;border-radius:9px;margin:6px 0 12px}
+textarea{min-height:80px}.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.hidden{display:none}.msg{padding:10px;border-radius:8px;background:#f3e8ff;margin:10px 0}
+footer{text-align:center;padding:25px;color:#71677f;font-size:13px}
+@media(max-width:600px){.row{grid-template-columns:1fr}.nav button{padding:7px;font-size:12px}}
+</style>
+</head>
+<body>
+<div id="startupNotice" style="display:none;padding:12px;background:#fff3cd;color:#664d03;text-align:center;font-family:Arial">Pi Marketplace Pro is loading…</div>
+<header>
+<div class="logo">π Pi Marketplace Pro</div>
+<div class="nav">
+<button onclick="show('market')">Marketplace</button>
+<button onclick="show('dashboard')">Seller</button>
+<button id="authBtn" onclick="show('auth')">Login</button>
+<button onclick="show('cart')">Cart (<span id="cartCount">0</span>)</button>
+</div>
+</header>
+
+<main>
+<section id="market">
+<div class="hero">
+<h1>Buy & Sell with Pi</h1>
+<p>Discover products from sellers on Pi Marketplace Pro.</p>
+<input id="search" placeholder="Search products..." oninput="renderProducts()">
+</div>
+<div class="card">
+<div class="row">
+<select id="category" onchange="renderProducts()">
+<option value="">All categories</option><option>Electronics</option><option>Fashion</option><option>Home</option><option>Services</option><option>Other</option>
+</select>
+<select id="sort" onchange="renderProducts()"><option value="new">Newest</option><option value="low">Price: low to high</option><option value="high">Price: high to low</option></select>
+</div>
+<div id="products" class="grid"></div>
+</div>
+</section>
+
+<section id="auth" class="hidden">
+<div class="card">
+<h2 id="authTitle">Create Account</h2>
+<p class="muted">V3 accounts are powered by Supabase Authentication.</p>
+<input id="name" placeholder="Full name">
+<input id="email" type="email" placeholder="Email">
+<input id="password" type="password" placeholder="Password">
+<button class="primary" onclick="register()">Create account</button>
+<button onclick="login()" style="margin-left:6px;padding:10px;border:1px solid #ddd;border-radius:8px;background:white">Login</button>
+<div id="authMsg" class="msg hidden"></div>
+</div>
+</section>
+
+<section id="dashboard" class="hidden">
+<div class="card">
+<h2>Seller Dashboard</h2>
+<div id="userInfo" class="msg"></div>
+<h3>Add Product</h3>
+<input id="pname" placeholder="Product name">
+<div class="row">
+<input id="pprice" type="number" step="0.01" placeholder="Price in Pi">
+<select id="pcat"><option>Electronics</option><option>Fashion</option><option>Home</option><option>Services</option><option>Other</option></select>
+</div>
+<textarea id="pdesc" placeholder="Product description"></textarea>
+<button class="primary" onclick="addProduct()">Publish Product</button>
+<button onclick="addDemoProducts()" style="margin-left:6px;padding:10px;border:1px solid #ddd;border-radius:8px;background:white">Add 20 Demo Products</button>
+<button onclick="logout()" style="margin-left:6px;padding:10px;border:1px solid #ddd;border-radius:8px;background:white">Logout</button>
+</div>
+<div class="card"><h3>My Products</h3><div id="myProducts" class="grid"></div></div>
+</section>
+
+<section id="cart" class="hidden">
+<div class="card"><h2>Your Cart</h2><div id="cartItems"></div><h3 id="total"></h3>
+<div class="msg">Choose <b>Pi Payment</b> to start a Pi payment inside Pi Browser. For production, payment completion must also be verified by a secure server.</div>
+<button class="primary" onclick="checkoutPi()">Pay with Pi</button>
+<button onclick="placeDemoOrderInternal()" style="margin-left:6px;padding:10px;border:1px solid #ddd;border-radius:8px;background:white">Place Order (Demo)</button>
+<div id="checkoutMsg" class="msg hidden"></div><div class="muted" style="margin-top:10px;font-size:13px">If Orders still fail, run the Orders permissions SQL supplied below in Supabase.</div></div>
+<div class="card"><h3>My Orders</h3><div id="orders"></div></div>
+</section>
+</main>
+<footer>Pi Marketplace Pro V3 • Supabase database + authentication connected.</footer>
+
+<script async src="https://sdk.minepi.com/pi-sdk.js"></script>
+<script>
+// Load Supabase first, then start the app. This avoids a race condition when the HTML is opened from Downloads/content:// on Android.
+window.supabaseReady = import("https://esm.sh/@supabase/supabase-js@2")
+  .then(mod => { window.supabaseCreateClient = mod.createClient; return mod.createClient; })
+  .catch(err => { console.error("Supabase library load failed:", err); return null; });
+</script>
+<script>
+const SUPABASE_URL = 'https://cchbaviqbajrjyadzbyt.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_JKgp2pjAgzDmcmry58jI9w_XwltetVe';
+const PI_BACKEND_URL = 'https://cchbaviqbajrjyadzbyt.supabase.co/functions/v1/pi-payment';
+let supabaseClient;
+let piAuth = null;
+let piReady = false;
+function initSupabase(){
+  if(!configured()) return false;
+  if(!window.supabaseCreateClient) return false;
+  supabaseClient = window.supabaseCreateClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+  return true;
+}
+
+let sessionUser = null;
+let cart = JSON.parse(localStorage.getItem('pmp_v3_cart') || '[]');
+
+function configured() {
+  return Boolean(
+    window.supabaseCreateClient &&
+    SUPABASE_URL.startsWith('https://') &&
+    SUPABASE_URL.includes('.supabase.co') &&
+    SUPABASE_PUBLISHABLE_KEY.startsWith('sb_publishable_')
+  );
+}
+function saveCart(){ localStorage.setItem('pmp_v3_cart', JSON.stringify(cart)); }
+function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+
+async function initPi(){
+  const sdk=window.Pi;
+  if(!sdk || typeof sdk.init!=='function') return false;
+  try{
+    await sdk.init({version:'2.0'});
+    piReady=true;
+    return true;
+  }catch(e){
+    console.warn('Pi SDK init failed:',e);
+    piReady=false;
+    return false;
+  }
+}
+
+async function ensurePiAuth(){
+  if(!piReady) await initPi();
+  if(!window.Pi || typeof window.Pi.authenticate!=='function') throw new Error('Open this app inside Pi Browser to use Pi Payments.');
+  if(piAuth?.accessToken) return piAuth;
+  piAuth=await window.Pi.authenticate(['payments'], async (payment)=>{
+    try{
+      const txid=payment?.transaction?.txid;
+      const paymentId=payment?.identifier;
+      if(paymentId && txid){
+        await callPiBackend('complete',{paymentId,txid,accessToken:piAuth?.accessToken});
+      }
+    }catch(e){ console.warn('Incomplete Pi payment completion failed:',e); }
+  });
+  return piAuth;
+}
+
+async function callPiBackend(action, extra={}){
+  const res=await fetch(PI_BACKEND_URL,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action,...extra})
+  });
+  const text=await res.text();
+  let data={};
+  try{data=JSON.parse(text)}catch(_){data={error:text}}
+  if(!res.ok) throw new Error(data.error||data.message||('Pi backend error '+res.status));
+  return data;
+}
+
+async function boot(){
+  try{
+    updateCartCount();
+    // The marketplace works even before Supabase/Pi finishes loading.
+    renderDemoProducts();
+
+    if(window.supabaseReady) await window.supabaseReady;
+    if(!configured()){
+      document.getElementById('authBtn').textContent='Login';
+      return;
+    }
+
+    if(!initSupabase()) return;
+
+    try{ await initPi(); }catch(e){ console.warn('Pi init skipped:',e); }
+
+    try{
+      const {data:{session}}=await supabaseClient.auth.getSession();
+      sessionUser=session?.user||null;
+      updateAuth();
+    }catch(e){
+      console.warn('Supabase session check skipped:',e);
+    }
+
+    try{ await renderProducts(); }catch(e){ console.warn('Products refresh skipped:',e); }
+
+    if(supabaseClient?.auth){
+      supabaseClient.auth.onAuthStateChange((_event,session)=>{
+        sessionUser=session?.user||null;
+        updateAuth();
+        if(!document.getElementById('dashboard').classList.contains('hidden')){
+          renderDashboard().catch?.(()=>{});
+        }
+      });
+    }
+  }catch(e){
+    console.error('App startup error:',e);
+    // Keep a visible app instead of a white screen.
+    renderDemoProducts();
+  }
+}
+
+
+function show(id){
+  document.querySelectorAll('main>section').forEach(x=>x.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+  if(id==='dashboard')renderDashboard();
+  if(id==='cart'){renderCart();renderOrders();}
+  if(id==='market')renderProducts();
+}
+
+async function register(){
+  if(!configured()) return msg('First paste your Supabase Publishable key in the code.');
+  const nameEl=document.querySelector('#auth input#name');
+  const emailEl=document.querySelector('#auth input#email');
+  const passwordEl=document.querySelector('#auth input#password');
+  const name=(nameEl?.value || '').trim();
+  const email=(emailEl?.value || '').trim().toLowerCase();
+  const password=passwordEl?.value || '';
+  if(!name || !email || !password){
+    const missing=[];
+    if(!name) missing.push('full name');
+    if(!email) missing.push('email');
+    if(!password) missing.push('password');
+    return msg('Please enter: '+missing.join(', ')+'.');
+  }
+  if(!emailEl.checkValidity()) return msg('Please enter a valid email address.');
+  if(password.length < 6) return msg('Password must be at least 6 characters.');
+
+  const {data,error}=await supabaseClient.auth.signUp({email,password});
+  if(error)return msg(error.message==='Failed to fetch' ? 'Connection failed. Check your internet connection and make sure this HTML file is opened online (HTTPS), not blocked by the browser.' : error.message);
+
+  if(data.user){
+    const {error:profileError}=await supabaseClient.from('profiles').upsert({
+      id:data.user.id,
+      name:name,
+      email:email
+    });
+    if(profileError) console.warn('Profile save:', profileError.message);
+  }
+  msg('Account created. Check your email if email confirmation is enabled.');
+}
+
+async function login(){
+  if(!configured()) return msg('First paste your Supabase Publishable key in the code.');
+  const email=(document.querySelector('#auth input#email')?.value || '').trim().toLowerCase();
+  const password=document.querySelector('#auth input#password')?.value || '';
+  if(!email || !password) return msg('Please enter your email and password.');
+  const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});
+  if(error)return msg(error.message==='Failed to fetch' ? 'Connection failed. Check your internet connection and make sure this HTML file is opened online (HTTPS), not blocked by the browser.' : error.message);
+  sessionUser=data.user;
+  updateAuth();
+  show('dashboard');
+}
+
+function msg(t){
+  const e=document.getElementById('authMsg');
+  e.textContent=t;
+  e.classList.remove('hidden');
+}
+
+async function logout(){
+  if(configured()) await supabaseClient.auth.signOut();
+  sessionUser=null;
+  updateAuth();
+  show('market');
+}
+
+function updateAuth(){
+  document.getElementById('authBtn').textContent=sessionUser?'Account':'Login';
+}
+
+async function currentProfile(){
+  if(!sessionUser)return null;
+  const {data}=await supabaseClient.from('profiles').select('*').eq('id',sessionUser.id).maybeSingle();
+  return data;
+}
+
+async function addProduct(){
+  if(!configured()) return alert('Paste your Supabase Publishable key first.');
+  if(!sessionUser){alert('Please create an account or login first.');show('auth');return}
+
+  const name=document.getElementById('pname').value.trim();
+  const price=Number(document.getElementById('pprice').value);
+  const cat=document.getElementById('pcat').value;
+  const desc=document.getElementById('pdesc').value.trim();
+  if(!name||!price)return alert('Enter product name and price.');
+
+  const {data:profile}=await supabaseClient.from('profiles').select('name,email').eq('id',sessionUser.id).maybeSingle();
+  let {error}=await supabaseClient.from('products').insert({
+    seller_id:sessionUser.id, name, price, category:cat, description:desc,
+    seller:profile?.name || sessionUser.email, seller_email:profile?.email || sessionUser.email
+  });
+  if(error && /description/i.test(error.message||'') && /schema cache|column/i.test(error.message||'')){
+    ({error}=await supabaseClient.from('products').insert({
+      seller_id:sessionUser.id, name, price, category:cat, desc,
+      seller:profile?.name || sessionUser.email, seller_email:profile?.email || sessionUser.email
+    }));
+  }
+  if(error)return alert('Could not publish: '+error.message);
+
+  document.getElementById('pname').value='';
+  document.getElementById('pprice').value='';
+  document.getElementById('pdesc').value='';
+  await renderProducts();
+  await renderDashboard();
+  alert('Product published successfully.');
+}
+
+async function addDemoProducts(){
+  if(!configured()) return alert('Supabase is not configured.');
+  if(!sessionUser){ alert('Please login first.'); show('auth'); return; }
+  const demo=[
+    ['USB Fast Charger',5,'Electronics','Fast charger for smartphones.'],
+    ['Type-C Cable',3,'Electronics','Durable Type-C charging and data cable.'],
+    ['Bluetooth Earphones',12,'Electronics','Wireless earphones with clear sound.'],
+    ['Phone Case',4,'Electronics','Protective phone case for everyday use.'],
+    ['Screen Protector',2,'Electronics','Clear tempered-glass screen protector.'],
+    ['Power Bank 10000mAh',20,'Electronics','Portable power bank for phones.'],
+    ['Bluetooth Speaker',18,'Electronics','Compact speaker for music and calls.'],
+    ['Smart Watch',25,'Electronics','Smart watch with useful everyday features.'],
+    ['LED Bulb',4,'Home','Energy-saving LED bulb for home use.'],
+    ['Extension Cable',7,'Home','Multi-socket extension cable.'],
+    ['Kitchen Utensil Set',15,'Home','Useful basic utensils for the kitchen.'],
+    ['Water Bottle',6,'Home','Reusable bottle for daily use.'],
+    ['Men T-Shirt',10,'Fashion','Comfortable casual T-shirt.'],
+    ['Women T-Shirt',10,'Fashion','Comfortable everyday T-shirt.'],
+    ['Jeans Trousers',18,'Fashion','Classic casual jeans.'],
+    ['Sneakers',25,'Fashion','Comfortable everyday sneakers.'],
+    ['Baseball Cap',6,'Fashion','Casual adjustable cap.'],
+    ['Graphic Design Service',15,'Services','Simple logo and poster design service.'],
+    ['Phone Repair Service',20,'Services','Basic smartphone repair service.'],
+    ['Delivery Service',8,'Services','Local delivery service for marketplace orders.']
+  ];
+
+  // Use only columns that are normally present in the products table.
+  // Try the common category/description names, then the legacy cat/desc names.
+  const rowsA=demo.map(([name,price,category,description])=>({
+    seller_id:sessionUser.id,name,price,category,description
+  }));
+  const rowsB=demo.map(([name,price,cat,desc])=>({
+    seller_id:sessionUser.id,name,price,cat,desc
+  }));
+
+  let result=await supabaseClient.from('products').insert(rowsA);
+  if(result.error){
+    result=await supabaseClient.from('products').insert(rowsB);
+  }
+  if(result.error){
+    return alert('Could not add demo products: '+result.error.message);
+  }
+  await renderProducts();
+  await renderDashboard();
+  alert('20 demo products added successfully.');
+}
+
+async function renderProducts(){
+  const box=document.getElementById('products');
+  const q=(document.getElementById('search').value||'').toLowerCase();
+  const c=document.getElementById('category').value;
+  const sortValue=document.getElementById('sort').value;
+
+  // Always show a working marketplace immediately.
+  if(!supabaseClient){
+    renderDemoProducts(q,c,sortValue);
+    return;
+  }
+
+  try{
+    let query=supabaseClient.from('products').select('*');
+    if(c) query=query.eq('category',c);
+    if(sortValue==='low') query=query.order('price',{ascending:true});
+    else if(sortValue==='high') query=query.order('price',{ascending:false});
+    else query=query.order('created_at',{ascending:false});
+
+    const {data,error}=await query;
+    if(error){
+      console.warn('Products query failed:',error);
+      renderDemoProducts(q,c,sortValue);
+      return;
+    }
+
+    let a=(data||[]).filter(p=>
+      (p.name+' '+(p.description||p.desc||'')+' '+(p.seller||''))
+      .toLowerCase().includes(q)
+    );
+
+    if(a.length){
+      box.innerHTML=a.map(p=>`
+        <div class="product">
+          <div class="pic"><img src="${productImage(p.name)}" alt="${esc(p.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><span class="fallback">π</span></div>
+          <h3>${esc(p.name)}</h3>
+          <div class="price">${esc(p.price)} π</div>
+          <p class="muted">${esc(p.category || p.cat || '')} • Seller: ${esc(p.seller||'')}</p>
+          <p>${esc(p.description || p.desc || '')}</p>
+          <button class="primary" onclick="addCart('${p.id}')">Add to Cart</button>
+        </div>`).join('');
+    }else{
+      renderDemoProducts(q,c,sortValue);
+    }
+  }catch(err){
+    console.warn('Marketplace load failed:',err);
+    renderDemoProducts(q,c,sortValue);
+  }
+}
+
+function renderDemoProducts(q='',c='',sortValue='new'){
+  const demos=[
+    ['USB Fast Charger',12,'Electronics','Fast USB charger'],
+    ['Type-C Cable',5,'Electronics','Durable Type-C charging cable'],
+    ['Bluetooth Earphones',18,'Electronics','Wireless earphones'],
+    ['Phone Case',7,'Fashion','Protective phone case'],
+    ['Screen Protector',4,'Other','Phone screen protector'],
+    ['Power Bank 10000mAh',25,'Electronics','Portable power bank'],
+    ['Smart Watch',35,'Electronics','Smart watch for everyday use'],
+    ['T-Shirt',10,'Fashion','Comfortable casual T-shirt']
+  ];
+  let a=demos.filter(p=>
+    (!c || p[2]===c) &&
+    (p[0]+' '+p[3]).toLowerCase().includes(q)
+  );
+  if(sortValue==='low') a.sort((x,y)=>x[1]-y[1]);
+  if(sortValue==='high') a.sort((x,y)=>y[1]-x[1]);
+
+  document.getElementById('products').innerHTML=a.map((p,i)=>`
+    <div class="product">
+      <div class="pic"><span class="fallback" style="display:flex">π</span></div>
+      <h3>${esc(p[0])}</h3>
+      <div class="price">${p[1]} π</div>
+      <p class="muted">${esc(p[2])} • Demo product</p>
+      <p>${esc(p[3])}</p>
+      <button class="primary" onclick="addDemoCart('${esc(p[0])}',${p[1]})">Add to Cart</button>
+    </div>`).join('') || '<p>No products found.</p>';
+}
+
+function addDemoCart(name,price){
+  const id='demo-'+name.toLowerCase().replace(/[^a-z0-9]+/g,'-');
+  const existing=cart.find(x=>x.id===id);
+  if(existing) existing.qty=(existing.qty||1)+1;
+  else cart.push({id,name,price,qty:1,demo:true});
+  saveCart();
+  updateCartCount();
+  alert(name+' added to cart.');
+}
+
+
+const DEMO_IMAGES={
+  'USB Fast Charger':'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?auto=format&fit=crop&w=700&q=80',
+  'Type-C Cable':'https://images.unsplash.com/photo-1625842268584-8f3296236761?auto=format&fit=crop&w=700&q=80',
+  'Bluetooth Earphones':'https://images.unsplash.com/photo-1606220945770-b5b6c2c55bf1?auto=format&fit=crop&w=700&q=80',
+  'Phone Case':'https://images.unsplash.com/photo-1601593346740-925612772716?auto=format&fit=crop&w=700&q=80',
+  'Screen Protector':'https://images.unsplash.com/photo-1598327105666-5b89351aff97?auto=format&fit=crop&w=700&q=80',
+  'Power Bank 10000mAh':'https://images.unsplash.com/photo-1609592424759-8d4f8f7f7a1a?auto=format&fit=crop&w=700&q=80',
+  'Bluetooth Speaker':'https://images.unsplash.com/photo-1589003077984-894e133dabab?auto=format&fit=crop&w=700&q=80',
+  'Smart Watch':'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=700&q=80',
+  'LED Bulb':'https://images.unsplash.com/photo-1509391366360-2e959784a276?auto=format&fit=crop&w=700&q=80',
+  'Extension Cable':'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=700&q=80',
+  'Kitchen Utensil Set':'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=700&q=80',
+  'Water Bottle':'https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=700&q=80',
+  'Men T-Shirt':'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=700&q=80',
+  'Women T-Shirt':'https://images.unsplash.com/photo-1525507119028-ed4c629a60a3?auto=format&fit=crop&w=700&q=80',
+  'Jeans Trousers':'https://images.unsplash.com/photo-1542272604-787c3835535d?auto=format&fit=crop&w=700&q=80',
+  'Sneakers':'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=700&q=80',
+  'Baseball Cap':'https://images.unsplash.com/photo-1521369909029-2afed882baee?auto=format&fit=crop&w=700&q=80',
+  'Graphic Design Service':'https://images.unsplash.com/photo-1561070791-2526d30994b5?auto=format&fit=crop&w=700&q=80',
+  'Phone Repair Service':'https://images.unsplash.com/photo-1598327105666-5b89351aff97?auto=format&fit=crop&w=700&q=80',
+  'Delivery Service':'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=700&q=80'
+};
+function productImage(name){return DEMO_IMAGES[name]||''}
+
+function addCart(id){
+  cart.push(id);
+  saveCart();
+  updateCartCount();
+  alert('Added to cart.');
+}
+function updateCartCount(){document.getElementById('cartCount').textContent=cart.length}
+
+async function renderCart(){
+  if(!configured()){document.getElementById('cartItems').innerHTML='<p>Configure Supabase first.</p>';return}
+  if(!cart.length){
+    document.getElementById('cartItems').innerHTML='<p>Your cart is empty.</p>';
+    document.getElementById('total').textContent='Total: 0 π';
+    renderOrders();
+    return;
+  }
+  const {data}=await supabaseClient.from('products').select('*').in('id',cart);
+  const byId=new Map((data||[]).map(p=>[String(p.id),p]));
+  const items=cart.map(id=>byId.get(String(id))).filter(Boolean);
+  document.getElementById('cartItems').innerHTML=items.map((p,i)=>
+    `<div class="cart-line"><span><b>${esc(p.name)}</b> — ${p.price} π</span><button class="danger" onclick="removeCart(${i})">Remove</button></div>`
+  ).join('')||'<p>Your cart is empty.</p>';
+  document.getElementById('total').textContent='Total: '+items.reduce((n,p)=>n+Number(p.price),0)+' π';
+  renderOrders();
+}
+
+function removeCart(i){cart.splice(i,1);saveCart();updateCartCount();renderCart()}
+
+function checkoutMessage(t){const e=document.getElementById('checkoutMsg');e.textContent=t;e.classList.remove('hidden')}
+
+async function placeDemoOrder(paymentStatus='demo'){
+  if(!sessionUser){alert('Please login first.');show('auth');return}
+  if(!cart.length)return alert('Cart is empty.');
+  if(!configured())return alert('Supabase is not configured.');
+  const {data:items,error:ie}=await supabaseClient.from('products').select('id,name,price').in('id',cart);
+  if(ie)return checkoutMessage('Could not read cart: '+ie.message);
+  const total=(items||[]).reduce((n,p)=>n+Number(p.price||0),0);
+  const payload={buyer_id:sessionUser.id,items:items||[],total,status:paymentStatus};
+  const {error}=await supabaseClient.from('orders').insert(payload);
+  if(error){
+    return checkoutMessage('Order error: '+(error.message||error.code||'Unknown error')+'. If this is a permission error, run the Orders permissions SQL in Supabase.');
+  }
+  cart=[];saveCart();updateCartCount();await renderCart();
+  checkoutMessage('Order created successfully. Status: '+paymentStatus+'.');
+}
+
+async function placeOrderWithTransaction(transactionId){
+  if(!sessionUser||!cart.length)return;
+  const {data:items}=await supabaseClient.from('products').select('id,name,price').in('id',cart);
+  const total=(items||[]).reduce((n,p)=>n+Number(p.price||0),0);
+  const {error}=await supabaseClient.from('orders').insert({buyer_id:sessionUser.id,items:items||[],total,status:'paid',transaction_id:transactionId||null});
+  if(error){checkoutMessage('Payment was submitted, but the order table is not ready. Save transaction ID: '+(transactionId||'unknown'));return;}
+  cart=[];saveCart();updateCartCount();await renderCart();checkoutMessage('Pi payment completed and order created.');
+}
+
+async function checkoutPi(){
+  if(!sessionUser){alert('Please login first.');show('auth');return}
+  if(!cart.length)return alert('Cart is empty.');
+  try{
+    checkoutMessage('Connecting to Pi Payments...');
+    const auth=await ensurePiAuth();
+    const totalText=document.getElementById('total').textContent||'';
+    const amount=Number((totalText.match(/[0-9]+(?:\.[0-9]+)?/)||['0'])[0]);
+    if(!amount || amount<=0) throw new Error('Invalid payment amount.');
+    const sdk=window.Pi;
+    sdk.createPayment({amount,memo:'Pi Marketplace Pro order',metadata:{cart:cart}}, {
+      onReadyForServerApproval:async(paymentId)=>{
+        try{
+          checkoutMessage('Pi payment ready. Approving securely...');
+          await callPiBackend('approve',{paymentId,accessToken:auth.accessToken});
+          checkoutMessage('Payment approved. Please confirm it in Pi Wallet.');
+        }catch(e){checkoutMessage('Pi approval error: '+e.message);}
+      },
+      onReadyForServerCompletion:async(paymentId,txid)=>{
+        try{
+          checkoutMessage('Transaction received. Verifying with Pi Network...');
+          await callPiBackend('complete',{paymentId,txid,accessToken:auth.accessToken});
+          await placeOrderWithTransaction(txid);
+        }catch(e){checkoutMessage('Pi completion error: '+e.message);}
+      },
+      onCancel:(paymentId)=>checkoutMessage('Pi payment cancelled.'),
+      onError:(error,payment)=>checkoutMessage('Pi payment error: '+(error?.message||error||'Unknown error'))
+    });
+  }catch(e){checkoutMessage('Could not start Pi payment: '+e.message)}
+}
+
+async function placeDemoOrderInternal(){return placeDemoOrder('demo')}
+
+
+async function renderOrders(){
+  const box=document.getElementById('orders');
+  if(!box)return;
+  if(!sessionUser){box.innerHTML='<p class="muted">Login to see your orders.</p>';return}
+  const {data,error}=await supabaseClient.from('orders').select('*').eq('buyer_id',sessionUser.id).order('created_at',{ascending:false}).limit(20);
+  if(error){box.innerHTML='<p class="muted">Orders error: '+esc(error.message||error.code||'Unknown error')+'</p><p class="muted">If this says permission denied, run the Orders permissions SQL in Supabase.</p>';return}
+  box.innerHTML=(data||[]).map(o=>`<div class="msg"><b>Order #${esc(String(o.id||'').slice(0,8))}</b> — ${Number(o.total||0)} π — <b>${esc(o.status||'pending')}</b><br><span class="muted">${esc(o.created_at||'')}</span></div>`).join('')||'<p class="muted">No orders yet.</p>';
+}
+
+async function renderDashboard(){
+  const userInfo=document.getElementById('userInfo');
+  const myProducts=document.getElementById('myProducts');
+  if(!sessionUser){
+    userInfo.textContent='You are not logged in. Create an account to sell.';
+    myProducts.innerHTML='';
+    return;
+  }
+  const profile=await currentProfile();
+  userInfo.innerHTML='<b>Seller:</b> '+esc(profile?.name||sessionUser.email)+'<br><span class="muted">'+esc(profile?.email||sessionUser.email)+'</span>';
+
+  const {data,error}=await supabaseClient.from('products').select('*').eq('seller_id',sessionUser.id).order('created_at',{ascending:false});
+  if(error){myProducts.innerHTML='<p>'+esc(error.message)+'</p>';return}
+  myProducts.innerHTML=(data||[]).map(p=>`
+    <div class="product">
+      <h3>${esc(p.name)}</h3>
+      <div class="price">${p.price} π</div>
+      <p>${esc(p.description || p.desc || '')}</p>
+      <button class="danger" onclick="deleteProduct('${p.id}')">Delete</button>
+    </div>`).join('')||'<p>You have no products yet.</p>';
+}
+
+async function deleteProduct(id){
+  if(!sessionUser)return;
+  const {error}=await supabaseClient.from('products').delete().eq('id',id).eq('seller_id',sessionUser.id);
+  if(error)return alert('Could not delete: '+error.message);
+  await renderProducts();
+  await renderDashboard();
+}
+
+boot();
+</script>
+</body>
+</html>
